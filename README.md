@@ -20,6 +20,8 @@ However, Ayoosh assumed some knowledge, and we needed to understand every piece.
 
 ## Setups
 
+### This repo is still under construction and will not work yet
+
 You'll need tt download the weights.
 
 ```
