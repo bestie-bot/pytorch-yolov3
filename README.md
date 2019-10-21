@@ -46,9 +46,3 @@ want with it as long as you assume "AS IS", that means, he (and we) are not repo
 We definitely take pull requests!
 
 Our request is that anything you do, you comment well. An example in the comments is helpful, but we don't want 3 paragraphs. Try a happy balance.
-
-## Thank you
-
-We definitely take pull requests!
-
-Our request is that anything you do, you comment well. An example in the comments is helpful, but we don't want 3 paragraphs. Try a happy balance.
