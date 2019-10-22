@@ -153,6 +153,21 @@ def unique(tensor):
 
 
 def write_results(prediction, confidence, num_classes, nms=True, nms_conf=0.4):
+    """
+    This function performs the objectness confidence thresholding and the 
+    non-max suppression (nms), which gives us our true boxes to display.
+
+    Params:
+        prediction: ?
+        confidence: the objectness score threshold
+        num_classes: classes for our model (VOC: 20, COCO: 80, etc)
+        nms: should we do nms (defaults to true)
+        nms_conf: the NMS IoU threshold
+
+    Returns:
+        ?tensor of output predtions
+    """
+
     conf_mask = (prediction[:, :, 4] > confidence).float().unsqueeze(2)
     prediction = prediction*conf_mask
 
@@ -256,3 +271,59 @@ def write_results(prediction, confidence, num_classes, nms=True, nms_conf=0.4):
                 output = torch.cat((output, out))
 
     return output
+
+
+def letterbox_image(img, inp_dim):
+    '''resize image with unchanged aspect ratio using padding'''
+    img_w, img_h = img.shape[1], img.shape[0]
+    w, h = inp_dim
+    new_w = int(img_w * min(w/img_w, h/img_h))
+    new_h = int(img_h * min(w/img_w, h/img_h))
+    resized_image = cv2.resize(
+        img, (new_w, new_h), interpolation=cv2.INTER_CUBIC)
+
+    canvas = np.full((inp_dim[1], inp_dim[0], 3), 128)
+
+    canvas[(h-new_h)//2:(h-new_h)//2 + new_h, (w-new_w) //
+           2:(w-new_w)//2 + new_w, :] = resized_image
+
+    return canvas
+
+
+def prep_image(img, inp_dim):
+    """
+    Prepare image for inputting to the neural network. 
+
+    Returns a Variable 
+    """
+    img = (letterbox_image(img, (inp_dim, inp_dim)))
+    img = img[:, :, ::-1].transpose((2, 0, 1)).copy()
+    img = torch.from_numpy(img).float().div(255.0).unsqueeze(0)
+    return img
+
+
+def count_parameters(model):
+    return sum(p.numel() for p in model.parameters())
+
+
+def count_learnable_parameters(model):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+
+def convert2cpu(matrix):
+    if matrix.is_cuda:
+        return torch.FloatTensor(matrix.size()).copy_(matrix)
+    else:
+        return matrix
+
+
+def load_classes(namesfile):
+    fp = open(namesfile, "r")
+    names = fp.read().split("\n")[:-1]
+    return names
+
+
+def get_im_dim(im):
+    im = cv2.imread(im)
+    w, h = im.shape[1], im.shape[0]
+    return w, h
