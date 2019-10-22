@@ -32,8 +32,9 @@ class Darknet(nn.Module):
         self.blocks = parse_cfg(cfgfile)
         # Convert those blocks to a module list for Pytorch
         self.net_info, self.module_list = create_modules(self.blocks)
-        # self.header = torch.IntTensor([0, 0, 0, 0])
-        # self.seen = 0
+        # These are for loading the weights below
+        self.header = torch.IntTensor([0, 0, 0, 0])
+        self.seen = 0
 
     def get_blocks(self):
         """
@@ -178,6 +179,17 @@ class Darknet(nn.Module):
             return 0
 
     def load_weights(self, weightfile):
+        """
+        Loads the weightfile. It is all 32-bit floats with 5 bytes as headers. There
+        are only weights for convolution and batch_normalization layers.
+
+        Params:
+            weightfile: link to weightfile
+
+        Return:
+            loads weights
+        """
+
         # Open the weights file
         fp = open(weightfile, "rb")
 
@@ -187,85 +199,150 @@ class Darknet(nn.Module):
         # 3. Subversion number
         # 4. Images seen
         header = np.fromfile(fp, dtype=np.int32, count=5)
-        print(f"Header: {header}")
+        # Turn the numpy header file into a tensor
         self.header = torch.from_numpy(header)
+        # The total number of images seen
         self.seen = self.header[3]
 
-        # The rest of the values are the weights
-        # Let's load them up
+        # The rest of the values are the weights, let's load them up
+        # into a numpy
         weights = np.fromfile(fp, dtype=np.float32)
 
+        # This variable keeps track of where we are in the weight list
+        # which is different than the module list
         ptr = 0
+        # Let's go through every item in the module list of this
+        # instantiated class
         for i in range(len(self.module_list)):
+            # We have to add one to this list because the first block
+            # is the netinfo block. This is different then the module
+            # list which took the netinfo block out
             module_type = self.blocks[i + 1]["type"]
 
             if module_type == "convolutional":
+                # Grab the current module
                 model = self.module_list[i]
                 try:
+                    # If there is batch normalize on this convolutional layer
+                    # let's grab that
                     batch_normalize = int(self.blocks[i+1]["batch_normalize"])
                 except:
                     batch_normalize = 0
 
+                # The first value in the model is the Conv2D module, so, for example
+                # Conv2d(3, 32, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
                 conv = model[0]
 
                 if (batch_normalize):
+                    # The second value in the model is a BatchNorm2d module, so, for example
+                    # BatchNorm2d(32, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
                     bn = model[1]
 
                     # Get the number of weights of Batch Norm Layer
+                    # This is the first value in the module, so 32 in previous example
+                    # PyTorch numel method stands for number of elements, which it returns
                     num_bn_biases = bn.bias.numel()
 
-                    # Load the weights
+                    # Load the weights. Batch norm layers have a sequences of values stored
+                    # for them in weights file. It goes:
+                    # 1. bn_biases
+                    # 2. bn_weights
+                    # 3. bn_running mean
+                    # 4. bn_running_var
+                    # After those 4 items, then the convolutional weights are added, which
+                    # we see once you exit this conditional loop
+
+                    # Weight values are a numpy file, so we turn them into a tensor here via torch.
+                    # We grab from the current ptr index, which is the (full file - header),
+                    # and then add the number of biases for first section. We then increment the ptr
+                    # variable so we can continue moving through the chunks of file data.
+                    # First time through on 416, we get weights[0:32], so the first 32 bias values
                     bn_biases = torch.from_numpy(
                         weights[ptr:ptr + num_bn_biases])
                     ptr += num_bn_biases
 
+                    # Grab the weights next. Following previous example, we get weights[32:64], which
+                    # is the next chunk of 32 float values assigned to the weights for this
+                    # batch norm layer
                     bn_weights = torch.from_numpy(
                         weights[ptr: ptr + num_bn_biases])
                     ptr += num_bn_biases
 
+                    # Grab the runing_mean next. Following previous example, we get weights[64:96], which
+                    # is the next chunk of 32 float values assigned to the running_mean for this
+                    # batch norm layer
                     bn_running_mean = torch.from_numpy(
                         weights[ptr: ptr + num_bn_biases])
                     ptr += num_bn_biases
 
+                    # Grab the running variance next. Following previous example, we get weights[96:128],
+                    # which is the next chunk of 32 float values assigned to the running_mean for this
+                    # batch norm layer
                     bn_running_var = torch.from_numpy(
                         weights[ptr: ptr + num_bn_biases])
                     ptr += num_bn_biases
 
-                    # Cast the loaded weights into dims of model weights.
+                    # Cast the loaded weights into dims of model weights. This doens't
+                    # seem like it's necessary since all of these are currently in
+                    # the proper tensor format. Under consideration for deletion
+                    # under optimization
                     bn_biases = bn_biases.view_as(bn.bias.data)
                     bn_weights = bn_weights.view_as(bn.weight.data)
                     bn_running_mean = bn_running_mean.view_as(bn.running_mean)
                     bn_running_var = bn_running_var.view_as(bn.running_var)
 
-                    # Copy the data to model
+                    # Copy all the tensor data pulled from the files to the
+                    # model BatchNorm2d data (bn) which we can process
                     bn.bias.data.copy_(bn_biases)
                     bn.weight.data.copy_(bn_weights)
                     bn.running_mean.copy_(bn_running_mean)
                     bn.running_var.copy_(bn_running_var)
 
                 else:
-                    # Number of biases
+                    # Remember the format for the model is:
+                    # Conv2d(3, 32, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+
+                    # The only places there are biases in convolution layers are in the
+                    # pre-detection layers where there are 255. Three of them in the CFG.
                     num_biases = conv.bias.numel()
 
-                    # Load the weights
+                    # Load the biases. Convolution layers have a sequences of values stored
+                    # for them in weights file. It goes:
+                    # 1. conv_biases
+                    # 2. conv_weights
+                    # Since we add the conv_weights outside this loop, we only have to focus
+                    # on preparing the biases here. In 416 example, the first ptr and bias
+                    # values are 56367712, 255, which is what we expect since the first
+                    # detection layer isn't until layer 83 out of 106, far into the CFG
                     conv_biases = torch.from_numpy(
                         weights[ptr: ptr + num_biases])
                     ptr = ptr + num_biases
 
                     # reshape the loaded weights according to the dims of the model weights
+                    # Again, tensors in proper shape so candidate for
+                    # optimization deletion
                     conv_biases = conv_biases.view_as(conv.bias.data)
 
-                    # Finally copy the data
+                    # Copy all the tensor data pulled from the files to the
+                    # model Conv2d data (conv) which we can process
                     conv.bias.data.copy_(conv_biases)
 
-                # Let us load the weights for the Convolutional layers
+                # Total the weight slots for the Convolutional layers
+                # Conv2d(3, 32, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
                 num_weights = conv.weight.numel()
 
-                # Do the same as above for weights
+                # Load the weights from the weights file into a tensor
+                # at the current ptr values plus the rest of chunk necessary
+                # from the file
                 conv_weights = torch.from_numpy(weights[ptr:ptr+num_weights])
+                # reset ptr to where we are in file
                 ptr = ptr + num_weights
 
+                # Reformat the weights tensor into a format that matches
+                # the model conv placeholder tensor
                 conv_weights = conv_weights.view_as(conv.weight.data)
+
+                # Copy the weights into the conv model
                 conv.weight.data.copy_(conv_weights)
 
     def save_weights(self, savedfile, cutoff=0):
@@ -277,17 +354,21 @@ class Darknet(nn.Module):
         # Attach the header at the top of the file
         self.header[3] = self.seen
         header = self.header
-
         header = header.numpy()
         header.tofile(fp)
 
         # Now, let us save the weights
         for i in range(len(self.module_list)):
+            # We have to add one to this list because the first block
+            # is the netinfo block. This is different then the module
+            # list which took the netinfo block out
             module_type = self.blocks[i+1]["type"]
 
             if (module_type) == "convolutional":
+                # Grab the full module
                 model = self.module_list[i]
                 try:
+                    # If this is a batch normalize layer
                     batch_normalize = int(self.blocks[i+1]["batch_normalize"])
                 except:
                     batch_normalize = 0
