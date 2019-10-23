@@ -142,16 +142,6 @@ def predict_transform(prediction, inp_dim, anchors, num_classes, CUDA=True):
     return prediction
 
 
-def unique(tensor):
-    tensor_np = tensor.cpu().numpy()
-    unique_np = np.unique(tensor_np)
-    unique_tensor = torch.from_numpy(unique_np)
-
-    tensor_res = tensor.new(unique_tensor.shape)
-    tensor_res.copy_(unique_tensor)
-    return tensor_res
-
-
 def write_results(prediction, confidence, num_classes, nms=True, nms_conf=0.4):
     """
     This function performs the objectness confidence thresholding and the
@@ -258,35 +248,45 @@ def write_results(prediction, confidence, num_classes, nms=True, nms_conf=0.4):
         except:
             continue
 
-        # If there are no detections, then keep going
+        # If there are no detections, then keep going. May be able to drpo this in
+        # PyTorch 1.3, will have to check with an image and nothing in it.
         if image_pred_.shape[0] == 0:
             continue
 
         # Get the various classes detected in the image
-        # -1 index (the last column value) holds the class index
+        # -1 index (the last column value) which holds the class index
         # This tells you what you have predicted in the image, and now
         # we just need to sort the boxes out
-        img_classes = unique(image_pred_[:, -1])
+        img_classes = torch.unique(image_pred_[:, -1])
 
         # ** Perform NMS **
-        # This is non maximum suppression, where we take the top values
+        # This is non-maximum suppression, where we take the top values
         # and IoU to determine which multiples of our prediction classes
         # are true or not (I have 4 predicted people overlapping for one
         # person, but which one is the actual predicted box)
+        # In the standard dog-bicycle-truck example for a static image
+        # from Darknet, we enter with 3 classes to figure out
         for cls in img_classes:
-            # get the detections with one particular class
-            cls_mask = image_pred_ * \
-                (image_pred_[:, -1] == cls).float().unsqueeze(1)
-            class_mask_ind = torch.nonzero(cls_mask[:, -2]).squeeze()
+            # Get the detections with one particular class
+            # This will only select the rows that have a value equal to the
+            # class listed in image_pred last column. Torch.where() returns
+            # a [4] tensor with the indices of condition. The image_pred_class
+            # tensors is those row indexes, modified to a 4 x 7 tensor. We may
+            # be able to get ride of the view. Candidate for optimization deletion.
+            class_mask_ind = torch.where(image_pred_[:, -1] == cls)
             image_pred_class = image_pred_[class_mask_ind].view(-1, 7)
 
             # sort the detections such that the entry with the maximum objectness
-            # confidence is at the top
+            # confidence is at the top. sort returns val, index, which is why we
+            # want the [1] element.
             conf_sort_index = torch.sort(
                 image_pred_class[:, 4], descending=True)[1]
             image_pred_class = image_pred_class[conf_sort_index]
-            idx = image_pred_class.size(0)  # Number of detections
 
+            # Number of detections
+            idx = image_pred_class.size(0)
+
+            # Go through each class prediction, and compare the boxes to the IoU's
             for i in range(idx):
                 # Get the IOUs of all boxes that come after the one we are looking at
                 # in the loop
