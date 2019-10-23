@@ -11,7 +11,6 @@ import os
 import os.path as osp
 from darknet import Darknet
 import pickle as pkl
-import pandas as pd
 import random
 
 
