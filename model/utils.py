@@ -271,19 +271,21 @@ def write_results(prediction, confidence, num_classes, nms=True, nms_conf=0.4):
             # This will only select the rows that have a value equal to the
             # class listed in image_pred last column. Torch.where() returns
             # a [4] tensor with the indices of condition. The image_pred_class
-            # tensors is those row indexes, modified to a 4 x 7 tensor. We may
+            # tensors is those row indexes, modified to a [4 x 7] tensor. We may
             # be able to get ride of the view. Candidate for optimization deletion.
             class_mask_ind = torch.where(image_pred_[:, -1] == cls)
             image_pred_class = image_pred_[class_mask_ind].view(-1, 7)
 
-            # sort the detections such that the entry with the maximum objectness
+            # Sort the detections such that the entry with the maximum objectness
             # confidence is at the top. sort returns val, index, which is why we
             # want the [1] element.
             conf_sort_index = torch.sort(
                 image_pred_class[:, 4], descending=True)[1]
+
+            # This is the sorted tensor, a [4 x 7] tensor
             image_pred_class = image_pred_class[conf_sort_index]
 
-            # Number of detections
+            # Number of detections in the tensor (the number of rows, so 0 index)
             idx = image_pred_class.size(0)
 
             # Go through each class prediction, and compare the boxes to the IoU's
@@ -291,8 +293,13 @@ def write_results(prediction, confidence, num_classes, nms=True, nms_conf=0.4):
                 # Get the IOUs of all boxes that come after the one we are looking at
                 # in the loop
                 try:
+                    # Add the sorted tensor's highest value. When you pull that row out, it becomes a 1d tensor.
+                    # Need to turn it back into a 2D tensor with the unsqueeze. Then you add all the other
+                    # predicted values as the other tensor
                     ious = bbox_iou(image_pred_class[i].unsqueeze(
                         0), image_pred_class[i+1:])
+
+                    print(f"IoUs: {ious.size()}")
                 except ValueError:
                     break
 
