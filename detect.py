@@ -17,7 +17,7 @@ import random
 
 def arg_parse():
     """
-    Parse arguements to the detect module
+    Parse arguments to the detect module
 
     """
 
@@ -180,7 +180,7 @@ for i in range(output.shape[0]):
 
 output_recast = time.time()
 class_load = time.time()
-colors = pkl.load(open("pallete", "rb"))
+# colors = pkl.load(open("pallete", "rb"))
 
 draw = time.time()
 
@@ -190,7 +190,8 @@ def write(x, results):
     c2 = tuple(x[3:5].int())
     img = results[int(x[0])]
     cls = int(x[-1])
-    color = random.choice(colors)
+    # color = random.choice(colors)
+    color = (255, 255, 255)
     label = "{0}".format(classes[cls])
     cv2.rectangle(img, c1, c2, color, 1)
     t_size = cv2.getTextSize(label, cv2.FONT_HERSHEY_PLAIN, 1, 1)[0]

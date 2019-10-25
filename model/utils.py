@@ -202,6 +202,8 @@ def write_results(prediction, confidence, num_classes, nms=True, nms_conf=0.4):
     # for all images
     write = False
 
+    print(100)
+
     for ind in range(batch_size):
         # The prediction tensor at ind is saying select the current image
         # in a batch. If this batch is one, then you get one image.
@@ -241,10 +243,9 @@ def write_results(prediction, confidence, num_classes, nms=True, nms_conf=0.4):
             # Reduce non_zero_ind to 1d tensor size of ([16]), which selects all the
             # rows at those indexes (since we're passing a list to the image_pred tensor
             # row param), plus all the columns of data in those rows (the ':'). That
-            # returns a [16 x 7] tensor. If there are errors, we can add the view, but
-            # it seems unnecesssary at this point
-            # image_pred_ = image_pred[non_zero_ind.squeeze(),:].view(-1,7)
-            image_pred_ = image_pred[non_zero_ind.squeeze(), :]
+            # returns a [16 x 7] tensor.
+            image_pred_ = image_pred[non_zero_ind.squeeze(), :].view(-1, 7)
+
         except:
             continue
 

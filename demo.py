@@ -75,14 +75,15 @@ def write(x, results):
     c2 = tuple(x[3:5].int())
     img = results
     cls = int(x[-1])
-    color = random.choice(colors)
+    # color = random.choice(colors)
+    color = (255, 255, 255)
     label = "{0}".format(classes[cls])
     cv2.rectangle(img, c1, c2, color, 1)
     t_size = cv2.getTextSize(label, cv2.FONT_HERSHEY_PLAIN, 1, 1)[0]
     c2 = c1[0] + t_size[0] + 3, c1[1] + t_size[1] + 4
     cv2.rectangle(img, c1, c2, color, -1)
     cv2.putText(img, label, (c1[0], c1[1] + t_size[1] + 4),
-                cv2.FONT_HERSHEY_PLAIN, 1, [225, 255, 255], 1)
+                cv2.FONT_HERSHEY_PLAIN, 1, [0, 0, 0], 1)
     return img
 
 
@@ -144,7 +145,7 @@ while cap.isOpened():
                 output[i, [2, 4]], 0.0, im_dim[i, 1])
 
         classes = load_classes('data/coco.names')
-        colors = pkl.load(open("pallete", "rb"))
+        # colors = pkl.load(open("pallete", "rb"))
 
         list(map(lambda x: write(x, frame), output))
 
