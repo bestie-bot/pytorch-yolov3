@@ -14,7 +14,7 @@ It takes anyone a few days at most to do computer vision with [PJReddie's YOLO](
 
 However, to really understand what's going on, and to be able to modify it for your own purposes, well, you should build it from scratch in your framework of choice.
 
-So, we chose [Pytorch](https://pytorch.org/), that part was easy. The hard part was the breakdown. A big thanks to Ayoosh Kathuria, who did a [5 part series on Medium](https://blog.paperspace.com/how-to-implement-a-yolo-object-detector-in-pytorch/) walking through all of this code. We adjusted a few small things here or there, but the bulk of the code comes from his work.
+So, we chose [Pytorch](https://pytorch.org/), that part was easy. The hard part was the breakdown. A big thanks to Ayoosh Kathuria, who did a [5 part series on Paperspace](https://blog.paperspace.com/how-to-implement-a-yolo-object-detector-in-pytorch/) walking through all of this code. We adjusted a few things here or there, but the bulk of the code comes from his work.
 
 However, Ayoosh assumed some knowledge, and we needed to understand every piece. So, we added commenting to nearly every line of code explaining what was going on, which in conjunction with the tutorial, should make this a unique repo for YOLOv3.
 
@@ -22,7 +22,7 @@ However, Ayoosh assumed some knowledge, and we needed to understand every piece.
 
 ### This repo is still under construction for commenting
 
-You'll need ot download the weights.
+You'll need to download the weights.
 
 ```
 wget https://pjreddie.com/media/files/yolov3.weights

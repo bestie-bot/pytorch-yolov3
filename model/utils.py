@@ -307,12 +307,21 @@ def write_results(prediction, confidence, num_classes, nms=True, nms_conf=0.4):
                 except IndexError:
                     break
 
-                # Zero out all the detections that have IoU > treshhold
+                # Zero out all the detections that have IoU  < nms treshhold
+                # Pytorch has no way of selecting row by a value in that
+                # row an only returning a tensor with approved rows.
+                # This is the long way around.
+                # Create a mask, which returns an array of 0's or values
                 iou_mask = (ious < nms_conf).float().unsqueeze(1)
-                print(f"iou_mask {ios_mask}, {iou_mask.size()}")
+                # Return the image_pred_class, which has everything after the
+                # 1st index as a comparison in the IoU BBox method earlier,
+                # with 0's or values
                 image_pred_class[i+1:] *= iou_mask
 
-                # Remove the non-zero entries
+                # Remove the non-zero entries, returns [nx7] of 4 corner coordinates,
+                # objectness score, the score of class with maximum confidence,
+                # and the index of that class where n equals IoU's less than
+                # nms threshold
                 non_zero_ind = torch.nonzero(image_pred_class[:, 4]).squeeze()
                 image_pred_class = image_pred_class[non_zero_ind].view(-1, 7)
 
@@ -322,13 +331,18 @@ def write_results(prediction, confidence, num_classes, nms=True, nms_conf=0.4):
             seq = batch_ind, image_pred_class
 
             if not write:
+                # On first time through, initiaize the output
                 output = torch.cat(seq, 1)
                 write = True
             else:
+                # Every other time through, concatenate the tensors
                 out = torch.cat(seq, 1)
                 output = torch.cat((output, out))
 
     try:
+        # In the example of the dog-bicycle-truck.png, the return is
+        # a [3 x 8] tensor, where the batch number is added to the beginning
+        # of the [3 x 7] image_pred_class
         return output
     except:
         return 0
