@@ -296,10 +296,11 @@ def write_results(prediction, confidence, num_classes, nms=True, nms_conf=0.4):
                     # Add the sorted tensor's highest value. When you pull that row out, it becomes a 1d tensor.
                     # Need to turn it back into a 2D tensor with the unsqueeze. Then you add all the other
                     # predicted values as the other tensor
+                    # Returns the IoU of the object with highest objectness score in relation to
+                    # all the other tensors.
                     ious = bbox_iou(image_pred_class[i].unsqueeze(
                         0), image_pred_class[i+1:])
 
-                    print(f"IoUs: {ious.size()}")
                 except ValueError:
                     break
 
@@ -308,6 +309,7 @@ def write_results(prediction, confidence, num_classes, nms=True, nms_conf=0.4):
 
                 # Zero out all the detections that have IoU > treshhold
                 iou_mask = (ious < nms_conf).float().unsqueeze(1)
+                print(f"iou_mask {ios_mask}, {iou_mask.size()}")
                 image_pred_class[i+1:] *= iou_mask
 
                 # Remove the non-zero entries

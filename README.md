@@ -20,9 +20,9 @@ However, Ayoosh assumed some knowledge, and we needed to understand every piece.
 
 ## Setups
 
-### This repo is still under construction and will not work yet
+### This repo is still under construction for commenting
 
-You'll need tt download the weights.
+You'll need ot download the weights.
 
 ```
 wget https://pjreddie.com/media/files/yolov3.weights
@@ -34,7 +34,17 @@ We highly suggest using a virtual environment of your choice, and then (assuming
 pip install requirements.txt
 ```
 
-That should be enough to get you started.
+To run the single image detector, in your virtual environment you can run:
+
+```
+python detect.py --images images/dog-cycle-car.png --det det
+```
+
+To run it on your webcam, you can run:
+
+```
+python demo.py
+```
 
 ## License
 
