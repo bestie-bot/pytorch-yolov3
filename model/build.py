@@ -204,18 +204,6 @@ def create_modules(blocks):
             shortcut = EmptyLayer()
             module.add_module("shortcut_{}".format(index), shortcut)
 
-        # There is no type Maxpool in the YOLO CFG, so this is a candidate
-        # for deletion on optimization
-        elif x["type"] == "maxpool":
-            stride = int(x["stride"])
-            size = int(x["size"])
-            if stride != 1:
-                maxpool = nn.MaxPool2d(size, stride)
-            else:
-                maxpool = MaxPoolStride1(size)
-
-            module.add_module("maxpool_{}".format(index), maxpool)
-
         # Yolo is the detection layer
         elif x["type"] == "yolo":
             # Mask is which anchor boxes to use by index from the anchor
@@ -244,7 +232,7 @@ def create_modules(blocks):
 
         else:
             print(
-                "Something not in our layer list. If you see this, something is VERY screwy.")
+                "Something not in our layer list. If you see this, you probably modified the YOLO cfg file. Dont' do that.")
             assert False
 
         # Append the moduel

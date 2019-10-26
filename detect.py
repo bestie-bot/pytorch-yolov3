@@ -58,6 +58,7 @@ classes = load_classes("data/coco.names")
 # Set up the neural network
 print("Loading network.....")
 model = Darknet(args.cfgfile)
+# model.print_network()
 model.load_weights(args.weightsfile)
 print("Network successfully loaded")
 

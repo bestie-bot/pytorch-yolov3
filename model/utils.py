@@ -202,8 +202,6 @@ def write_results(prediction, confidence, num_classes, nms=True, nms_conf=0.4):
     # for all images
     write = False
 
-    print(100)
-
     for ind in range(batch_size):
         # The prediction tensor at ind is saying select the current image
         # in a batch. If this batch is one, then you get one image.
@@ -378,28 +376,7 @@ def prep_image(img, inp_dim):
     return img
 
 
-def count_parameters(model):
-    return sum(p.numel() for p in model.parameters())
-
-
-def count_learnable_parameters(model):
-    return sum(p.numel() for p in model.parameters() if p.requires_grad)
-
-
-def convert2cpu(matrix):
-    if matrix.is_cuda:
-        return torch.FloatTensor(matrix.size()).copy_(matrix)
-    else:
-        return matrix
-
-
 def load_classes(namesfile):
     fp = open(namesfile, "r")
     names = fp.read().split("\n")[:-1]
     return names
-
-
-def get_im_dim(im):
-    im = cv2.imread(im)
-    w, h = im.shape[1], im.shape[0]
-    return w, h
